@@ -19,9 +19,9 @@ public class ShowResultActivity extends Activity {
         long root2 = intent.getLongExtra("root2", 0);
         long time = intent.getLongExtra("time_seconds", 0);
 
-        String originalNumberS = "Original number is: " + String.valueOf(originalNumber);
-        String root1S = "The first root is: " + String.valueOf(root1);
-        String root2S = "The second root is: " + String.valueOf(root2);
+        String originalNumberS = String.valueOf(originalNumber);
+        String root1S =  String.valueOf(root1);
+        String root2S = String.valueOf(root2);
         String timeS = "Time taken " + time + " s.";
 
         TextView originalNumberView = findViewById(R.id.originalNumber);
