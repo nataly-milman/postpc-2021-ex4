@@ -19,144 +19,139 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
-  private BroadcastReceiver broadcastReceiverForSuccess = null;
-  private BroadcastReceiver broadcastReceiverForFailure = null;
-  private boolean editEnabled;
+    private BroadcastReceiver broadcastReceiverForSuccess = null;
+    private BroadcastReceiver broadcastReceiverForFailure = null;
 
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-    ProgressBar progressBar = findViewById(R.id.progressBar);
-    EditText editTextUserInput = findViewById(R.id.editTextInputNumber);
-    Button buttonCalculateRoots = findViewById(R.id.buttonCalculateRoots);
+        ProgressBar progressBar = findViewById(R.id.progressBar);
+        EditText editTextUserInput = findViewById(R.id.editTextInputNumber);
+        Button buttonCalculateRoots = findViewById(R.id.buttonCalculateRoots);
 
-    // set initial UI:
-    progressBar.setVisibility(View.GONE); // hide progress
-    editTextUserInput.setText(""); // cleanup text in edit-text
-    editTextUserInput.setEnabled(true); // set edit-text as enabled (user can input text)
-    buttonCalculateRoots.setEnabled(false); // set button as disabled (user can't click)
+        // set initial UI:
+        progressBar.setVisibility(View.GONE); // hide progress
+        editTextUserInput.setText(""); // cleanup text in edit-text
+        editTextUserInput.setEnabled(true); // set edit-text as enabled (user can input text)
+        buttonCalculateRoots.setEnabled(false); // set button as disabled (user can't click)
 
-    // set listener on the input written by the keyboard to the edit-text
-    editTextUserInput.addTextChangedListener(new TextWatcher() {
-      public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-      public void onTextChanged(CharSequence s, int start, int before, int count) { }
-      public void afterTextChanged(Editable s) {
-        // text did change
-        String newText = editTextUserInput.getText().toString();
-        // todo: check conditions to decide if button should be enabled/disabled (see spec below)
-        if (TextUtils.isDigitsOnly(newText)){
-          try{
-            Long.parseLong(newText);
-          }
-          catch (NumberFormatException e){
-            buttonCalculateRoots.setEnabled(false);
-            return;
-          }
-          buttonCalculateRoots.setEnabled(!newText.isEmpty());
-        }
-      }
-    });
+        // set listener on the input written by the keyboard to the edit-text
+        editTextUserInput.addTextChangedListener(new TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
 
-      // set click-listener to the button
-      buttonCalculateRoots.setOnClickListener(v -> {
-      Intent intentToOpenService = new Intent(MainActivity.this, CalculateRootsService.class);
-      String userInputString = editTextUserInput.getText().toString();
-      long userInputLong = 0;
-      if (TextUtils.isDigitsOnly(userInputString)){
-        try{
-          userInputLong = Long.parseLong(userInputString);
-        }
-        catch (NumberFormatException e){
-          return;
-        }
-        this.editEnabled = false;
-        buttonCalculateRoots.setEnabled(false);
-        editTextUserInput.setEnabled(false);
-        progressBar.setVisibility(View.VISIBLE);
-      }
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
 
-      intentToOpenService.putExtra("number_for_service", userInputLong);
-      startService(intentToOpenService);
-    });
+            public void afterTextChanged(Editable s) {
+                // text did change
+                String newText = editTextUserInput.getText().toString();
+                if (TextUtils.isDigitsOnly(newText)) {
+                    try {
+                        Long.parseLong(newText);
+                    } catch (NumberFormatException e) {
+                        buttonCalculateRoots.setEnabled(false);
+                        return;
+                    }
+                    buttonCalculateRoots.setEnabled(!newText.isEmpty());
+                }
+            }
+        });
 
-    // register a broadcast-receiver to handle action "found_roots"
-    broadcastReceiverForSuccess = new BroadcastReceiver() {
-      @Override
-      public void onReceive(Context context, Intent incomingIntent) {
-        if (incomingIntent == null || !incomingIntent.getAction().equals("found_roots")) return;
-        // success finding roots!
-        progressBar.setVisibility(View.GONE);
-        buttonCalculateRoots.setEnabled(true);
-        editTextUserInput.setEnabled(true);
-        editTextUserInput.setText("");
-        long originalNumber = incomingIntent.getLongExtra("original_number", 0);
-        long root1 = incomingIntent.getLongExtra("root1", 0);
-        long root2 = incomingIntent.getLongExtra("root2", 0);
-        long time = incomingIntent.getLongExtra("time_seconds", 0);
-        Intent showResultsIntent = new Intent(MainActivity.this, ShowResultActivity.class);
-        showResultsIntent.putExtra("original_number", originalNumber);
-        showResultsIntent.putExtra("root1", root1);
-        showResultsIntent.putExtra("root2", root2);
-        showResultsIntent.putExtra("time_seconds", time);
-        startActivity(showResultsIntent);
-      }
-    };
-    registerReceiver(broadcastReceiverForSuccess, new IntentFilter("found_roots"));
+        // set click-listener to the button
+        buttonCalculateRoots.setOnClickListener(v -> {
+            Intent intentToOpenService = new Intent(MainActivity.this, CalculateRootsService.class);
+            String userInputString = editTextUserInput.getText().toString();
+            long userInputLong = 0;
+            if (TextUtils.isDigitsOnly(userInputString)) {
+                try {
+                    userInputLong = Long.parseLong(userInputString);
+                } catch (NumberFormatException e) {
+                    return;
+                }
+                buttonCalculateRoots.setEnabled(false);
+                editTextUserInput.setEnabled(false);
+                progressBar.setVisibility(View.VISIBLE);
+            }
+
+            intentToOpenService.putExtra("number_for_service", userInputLong);
+            startService(intentToOpenService);
+        });
+
+        // register a broadcast-receiver to handle action "found_roots"
+        broadcastReceiverForSuccess = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent incomingIntent) {
+                if (incomingIntent == null || !incomingIntent.getAction().equals("found_roots"))
+                    return;
+                // success finding roots!
+                progressBar.setVisibility(View.GONE);
+                buttonCalculateRoots.setEnabled(true);
+                editTextUserInput.setEnabled(true);
+                editTextUserInput.setText("");
+                long originalNumber = incomingIntent.getLongExtra("original_number", 0);
+                long root1 = incomingIntent.getLongExtra("root1", 0);
+                long root2 = incomingIntent.getLongExtra("root2", 0);
+                long time = incomingIntent.getLongExtra("time_seconds", 0);
+                Intent showResultsIntent = new Intent(MainActivity.this, ShowResultActivity.class);
+                showResultsIntent.putExtra("original_number", originalNumber);
+                showResultsIntent.putExtra("root1", root1);
+                showResultsIntent.putExtra("root2", root2);
+                showResultsIntent.putExtra("time_seconds", time);
+                startActivity(showResultsIntent);
+            }
+        };
+        registerReceiver(broadcastReceiverForSuccess, new IntentFilter("found_roots"));
 
       /*
      add a broadcast-receiver to listen for abort-calculating as defined in the spec (below)
      to show a Toast, use this code:
      `Toast.makeText(this, "text goes here", Toast.LENGTH_SHORT).show()`
      */
-      broadcastReceiverForFailure = new BroadcastReceiver() {
-      @Override
-      public void onReceive(Context context, Intent incomingIntent) {
-        if (incomingIntent == null || !incomingIntent.getAction().equals("stopped_calculations"))
-          return;
-        Toast.makeText(MainActivity.this, "Took more than 20 seconds OTL OTL OTL",
-                Toast.LENGTH_SHORT).show();
+        broadcastReceiverForFailure = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent incomingIntent) {
+                if (incomingIntent == null || !incomingIntent.getAction().equals("stopped_calculations"))
+                    return;
+                Toast.makeText(MainActivity.this, "Took more than 20 seconds OTL OTL OTL",
+                        Toast.LENGTH_SHORT).show();
 
-        editEnabled = true;
-        editTextUserInput.setEnabled(true);
-        progressBar.setVisibility(View.GONE);
-        String userInput = editTextUserInput.getText().toString();
-        buttonCalculateRoots.setEnabled(!userInput.isEmpty() && TextUtils.isDigitsOnly(userInput));
-      }
-    };
-    registerReceiver(broadcastReceiverForFailure, new IntentFilter("stopped_calculations"));
-  }
+                editTextUserInput.setEnabled(true);
+                progressBar.setVisibility(View.GONE);
+                String userInput = editTextUserInput.getText().toString();
+                buttonCalculateRoots.setEnabled(!userInput.isEmpty() && TextUtils.isDigitsOnly(userInput));
+            }
+        };
+        registerReceiver(broadcastReceiverForFailure, new IntentFilter("stopped_calculations"));
+    }
 
-  @Override
-  protected void onDestroy() {
-    super.onDestroy();
-    // remove ALL broadcast receivers we registered earlier in onCreate().
-    //  to remove a registered receiver, call method `this.unregisterReceiver(<receiver-to-remove>)`
-    this.unregisterReceiver(broadcastReceiverForSuccess);
-    unregisterReceiver(broadcastReceiverForFailure);
-    super.onDestroy();
-  }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        this.unregisterReceiver(broadcastReceiverForSuccess);
+        this.unregisterReceiver(broadcastReceiverForFailure);
+        super.onDestroy();
+    }
 
-  @Override
-  protected void onSaveInstanceState(@NonNull Bundle outState) {
-    super.onSaveInstanceState(outState);
-    EditText editTextUserInput = findViewById(R.id.editTextInputNumber);
-    outState.putString("user input", editTextUserInput.getText().toString());
-  }
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        EditText editTextUserInput = findViewById(R.id.editTextInputNumber);
+        outState.putString("user input", editTextUserInput.getText().toString());
+    }
 
-  @Override
-  protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
-    super.onRestoreInstanceState(savedInstanceState);
-    EditText editTextUserInput = findViewById(R.id.editTextInputNumber);
-    editTextUserInput.setText(savedInstanceState.getString("user input"));
-  }
+    @Override
+    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        EditText editTextUserInput = findViewById(R.id.editTextInputNumber);
+        editTextUserInput.setText(savedInstanceState.getString("user input"));
+    }
 }
 
 
 /*
-
-TODO:
 the spec is:
 
 upon launch, Activity starts out "clean":
