@@ -6,11 +6,13 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -18,8 +20,8 @@ import androidx.appcompat.app.AppCompatActivity;
 public class MainActivity extends AppCompatActivity {
 
   private BroadcastReceiver broadcastReceiverForSuccess = null;
-  // TODO: add any other fields to the activity as you want
-
+  private BroadcastReceiver broadcastReceiverForFailure = null;
+  private boolean editEnabled;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -44,18 +46,39 @@ public class MainActivity extends AppCompatActivity {
         // text did change
         String newText = editTextUserInput.getText().toString();
         // todo: check conditions to decide if button should be enabled/disabled (see spec below)
+        if (TextUtils.isDigitsOnly(newText)){
+          try{
+            Long.parseLong(newText);
+          }
+          catch (NumberFormatException e){
+            buttonCalculateRoots.setEnabled(false);
+            return;
+          }
+          buttonCalculateRoots.setEnabled(!newText.isEmpty());
+        }
       }
     });
 
-    // set click-listener to the button
-    buttonCalculateRoots.setOnClickListener(v -> {
+      // set click-listener to the button
+      buttonCalculateRoots.setOnClickListener(v -> {
       Intent intentToOpenService = new Intent(MainActivity.this, CalculateRootsService.class);
       String userInputString = editTextUserInput.getText().toString();
-      // todo: check that `userInputString` is a number. handle bad input. convert `userInputString` to long
-      long userInputLong = 0; // todo this should be the converted string from the user
+      long userInputLong = 0;
+      if (TextUtils.isDigitsOnly(userInputString)){
+        try{
+          userInputLong = Long.parseLong(userInputString);
+        }
+        catch (NumberFormatException e){
+          return;
+        }
+        this.editEnabled = false;
+        buttonCalculateRoots.setEnabled(false);
+        editTextUserInput.setEnabled(false);
+        progressBar.setVisibility(View.VISIBLE);
+      }
+
       intentToOpenService.putExtra("number_for_service", userInputLong);
       startService(intentToOpenService);
-      // todo: set views states according to the spec (below)
     });
 
     // register a broadcast-receiver to handle action "found_roots"
@@ -64,42 +87,69 @@ public class MainActivity extends AppCompatActivity {
       public void onReceive(Context context, Intent incomingIntent) {
         if (incomingIntent == null || !incomingIntent.getAction().equals("found_roots")) return;
         // success finding roots!
-        /*
-         TODO: handle "roots-found" as defined in the spec (below).
-          also:
-           - the service found roots and passed them to you in the `incomingIntent`. extract them.
-           - when creating an intent to open the new-activity, pass the roots as extras to the new-activity intent
-             (see for example how did we pass an extra when starting the calculation-service)
-         */
+        progressBar.setVisibility(View.GONE);
+        buttonCalculateRoots.setEnabled(true);
+        editTextUserInput.setEnabled(true);
+        editTextUserInput.setText("");
+        long originalNumber = incomingIntent.getLongExtra("original_number", 0);
+        long root1 = incomingIntent.getLongExtra("root1", 0);
+        long root2 = incomingIntent.getLongExtra("root2", 0);
+        long time = incomingIntent.getLongExtra("time_seconds", 0);
+        Intent showResultsIntent = new Intent(MainActivity.this, ShowResultActivity.class);
+        showResultsIntent.putExtra("original_number", originalNumber);
+        showResultsIntent.putExtra("root1", root1);
+        showResultsIntent.putExtra("root2", root2);
+        showResultsIntent.putExtra("time_seconds", time);
+        startActivity(showResultsIntent);
       }
     };
     registerReceiver(broadcastReceiverForSuccess, new IntentFilter("found_roots"));
 
-    /*
-    todo:
+      /*
      add a broadcast-receiver to listen for abort-calculating as defined in the spec (below)
      to show a Toast, use this code:
      `Toast.makeText(this, "text goes here", Toast.LENGTH_SHORT).show()`
      */
+      broadcastReceiverForFailure = new BroadcastReceiver() {
+      @Override
+      public void onReceive(Context context, Intent incomingIntent) {
+        if (incomingIntent == null || !incomingIntent.getAction().equals("stopped_calculations"))
+          return;
+        Toast.makeText(MainActivity.this, "Took more than 20 seconds OTL OTL OTL",
+                Toast.LENGTH_SHORT).show();
+
+        editEnabled = true;
+        editTextUserInput.setEnabled(true);
+        progressBar.setVisibility(View.GONE);
+        String userInput = editTextUserInput.getText().toString();
+        buttonCalculateRoots.setEnabled(!userInput.isEmpty() && TextUtils.isDigitsOnly(userInput));
+      }
+    };
+    registerReceiver(broadcastReceiverForFailure, new IntentFilter("stopped_calculations"));
   }
 
   @Override
   protected void onDestroy() {
     super.onDestroy();
-    // todo: remove ALL broadcast receivers we registered earlier in onCreate().
+    // remove ALL broadcast receivers we registered earlier in onCreate().
     //  to remove a registered receiver, call method `this.unregisterReceiver(<receiver-to-remove>)`
+    this.unregisterReceiver(broadcastReceiverForSuccess);
+    unregisterReceiver(broadcastReceiverForFailure);
+    super.onDestroy();
   }
 
   @Override
   protected void onSaveInstanceState(@NonNull Bundle outState) {
     super.onSaveInstanceState(outState);
-    // TODO: put relevant data into bundle as you see fit
+    EditText editTextUserInput = findViewById(R.id.editTextInputNumber);
+    outState.putString("user input", editTextUserInput.getText().toString());
   }
 
   @Override
   protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
     super.onRestoreInstanceState(savedInstanceState);
-    // TODO: load data from bundle and set screen state (see spec below)
+    EditText editTextUserInput = findViewById(R.id.editTextInputNumber);
+    editTextUserInput.setText(savedInstanceState.getString("user input"));
   }
 }
 

@@ -39,6 +39,9 @@ public class CalculateRootsService extends IntentService {
             curIntent.putExtra("original_number", numberToCalculateRootsFor);
             curIntent.putExtra("root1", root1);
             curIntent.putExtra("root2", root2);
+            curIntent.putExtra("time_seconds",
+                    TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()
+                            - timeStartMs));
         }
         sendBroadcast(curIntent);
     }
